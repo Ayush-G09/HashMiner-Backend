@@ -7,7 +7,7 @@ const generateOTP = require("../utils/otpGenerator");
 
 const router = express.Router();
 
-// Email Transporter for sending OTP
+// Email Transporter for sending OTP//
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,
