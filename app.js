@@ -6,7 +6,7 @@ const authRoutes = require("./routes/auth");
 
 const app = express();
 
-// Middleware
+// Middleware//
 app.use(cors()); // Add CORS middleware
 app.use(express.json());
 
