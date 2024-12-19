@@ -18,9 +18,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-
-let otpStorage = {}; // Temporarily store OTPs for emails
-
 // 1. API: Send OTP to user email
 router.post("/send-otp", async (req, res) => {
   const { email } = req.body;
@@ -28,7 +25,6 @@ router.post("/send-otp", async (req, res) => {
   if (!email) return res.status(400).json({ message: "Email is required" });
 
   const otp = generateOTP();
-  otpStorage[email] = otp;
 
   // Send OTP via email
   const mailOptions = {
@@ -64,15 +60,11 @@ router.post("/send-otp", async (req, res) => {
 
 // 2. API: Register a new user
 router.post("/register", async (req, res) => {
-  const { username, email, password, otp } = req.body;
+  const { username, email, password } = req.body;
 
   // Validate fields
-  if (!username || !email || !password || !otp)
+  if (!username || !email || !password)
     return res.status(400).json({ message: "All fields are required" });
-
-  // Validate OTP
-  if (otpStorage[email] !== otp)
-    return res.status(400).json({ message: "Invalid OTP" });
 
   // Check if user exists
   const userExists = await User.findOne({ email });
