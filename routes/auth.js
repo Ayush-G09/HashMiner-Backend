@@ -196,38 +196,27 @@ router.get("/user/:id?", async (req, res) => {
 
   try {
     if (id) {
-      // Fetch a specific user's balance and miners only
-      const user = await User.findById(id, "balance miners");
+      // Fetch a specific user by ID
+      const user = await User.findById(id);
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.status(200).json({
-        message: "User data fetched successfully",
-        data: {
-          balance: user.balance,
-          miners: user.miners,
-        },
-      });
+      res.status(200).json({ message: "User data fetched successfully", user });
     } else {
-      // Fetch all users' balance and miners
-      const users = await User.find({}, "balance miners");
+      // Fetch all users
+      const users = await User.find();
 
       res.status(200).json({
         message: "All users fetched successfully",
-        data: users.map((user) => ({
-          id: user._id,
-          balance: user.balance,
-          miners: user.miners,
-        })),
+        users,
       });
     }
   } catch (error) {
-    res.status(500).json({
-      message: "Failed to fetch user data",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch user data", error: error.message });
   }
 });
 
