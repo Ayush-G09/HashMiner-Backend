@@ -5,10 +5,10 @@ const mineCoins = async () => {
   try {
     const users = await User.find();
 
-    users.forEach(async (user) => {
+    for (const user of users) {  // Using `for...of` instead of `forEach`
       let updated = false;
 
-      user.miners.forEach((miner) => {
+      for (const miner of user.miners) {  // Loop through miners
         if (miner.status === "Running") {
           miner.coinsMined += miner.hashRate;
 
@@ -20,10 +20,12 @@ const mineCoins = async () => {
 
           updated = true;
         }
-      });
+      }
 
-      if (updated) await user.save();
-    });
+      if (updated) {
+        await user.save(); // Wait for user to be saved after modifications
+      }
+    }
 
     console.log("Mining update completed.");
   } catch (error) {
@@ -32,4 +34,4 @@ const mineCoins = async () => {
 };
 
 // Run every hour
-setInterval(mineCoins, 1000 * 60 * 60); // 1 hour
+setInterval(mineCoins, 1000 * 60 * 2); // 1 hour
