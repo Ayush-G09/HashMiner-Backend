@@ -26,6 +26,6 @@ jobs:
 
       # Step 4: Run the mining script
       - name: Run mining script
-        run: node ./scheduler.js
+        run: node ./schedulers/scheduler.js
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }} # Only MONGODB_URI is required
