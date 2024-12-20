@@ -121,4 +121,15 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.delete("/delete-all-users", async (req, res) => {
+  try {
+    // Delete all users from the collection
+    await User.deleteMany({});
+
+    res.status(200).json({ message: "All user data deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete user data", error: error.message });
+  }
+});
+
 module.exports = router;
