@@ -1,0 +1,31 @@
+name: Scheduled Mining Job
+
+on:
+  schedule:
+    - cron: "*/2 * * * *" # Runs every 2 minutes
+  workflow_dispatch: # Allows manual trigger for debugging or testing
+
+jobs:
+  run-mining-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # Use the appropriate Node.js version
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 4: Run the mining script
+      - name: Run mining script
+        run: node ./scheduler.js
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }} # Only MONGODB_URI is required

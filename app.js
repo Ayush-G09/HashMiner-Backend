@@ -4,8 +4,6 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const authRoutes = require("./routes/auth");
 
-require("./schedulers/scheduler");  // Import the scheduler to start mining process
-
 const app = express();
 
 // Middleware
