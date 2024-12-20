@@ -60,7 +60,7 @@ router.post("/send-otp", async (req, res) => {
 
 // 2. API: Register a new user
 router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, referredBy } = req.body;
 
   // Validate fields
   if (!username || !email || !password)
@@ -78,6 +78,7 @@ router.post("/register", async (req, res) => {
       username,
       email,
       password: hashedPassword,
+      referredBy, // Optional, will be null if not provided
     });
 
     res.status(201).json({ message: "User registered successfully", user: newUser });
