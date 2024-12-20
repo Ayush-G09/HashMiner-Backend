@@ -1,13 +1,15 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors"); // Import cors
+const cors = require("cors");
 const authRoutes = require("./routes/auth");
+
+require("./schedulers/scheduler");  // Import the scheduler to start mining process
 
 const app = express();
 
-// Middleware//
-app.use(cors()); // Add CORS middleware
+// Middleware
+app.use(cors());
 app.use(express.json());
 
 // Routes

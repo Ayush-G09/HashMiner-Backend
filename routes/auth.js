@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const User = require("../models/User");
 const generateOTP = require("../utils/otpGenerator");
+const MINER_CONFIG = require("../config/minersConfig");
 
 const router = express.Router();
 
@@ -130,6 +131,92 @@ router.delete("/delete-all-users", async (req, res) => {
     res.status(200).json({ message: "All user data deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete user data", error: error.message });
+  }
+});
+
+// Add a Miner to the User
+router.post("/add-miner/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const { type } = req.body; // Only miner type will be sent
+
+  // Validate the miner type
+  if (!type || !MINER_CONFIG[type]) {
+    return res.status(400).json({ message: "Invalid or missing miner type." });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    // Predefined hashRate and capacity from config
+    const { hashRate, capacity } = MINER_CONFIG[type];
+
+    // Add the miner to the user's miners array
+    user.miners.push({
+      type,
+      hashRate,
+      coinsMined: 0,
+      capacity,
+      status: "Running",
+    });
+
+    await user.save();
+    res.status(200).json({ message: "Miner added successfully", miners: user.miners });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to add miner", error: error.message });
+  }
+});
+
+// 2. Collect Mined Coins and Update Balance
+router.post("/collect-coins/:userId/:minerId", async (req, res) => {
+  const { userId, minerId } = req.params;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const miner = user.miners.id(minerId);
+    if (!miner) return res.status(404).json({ message: "Miner not found." });
+
+    // Add coinsMined to user balance and reset miner
+    user.balance += miner.coinsMined;
+    miner.coinsMined = 0;
+    miner.status = "Running"; // Restart mining
+
+    await user.save();
+
+    res.status(200).json({ message: "Coins collected successfully", balance: user.balance });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to collect coins", error: error.message });
+  }
+});
+
+router.get("/user/:id?", async (req, res) => {
+  const { id } = req.params; // Optional user ID
+
+  try {
+    if (id) {
+      // Fetch a specific user by ID
+      const user = await User.findById(id);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.status(200).json({ message: "User data fetched successfully", user });
+    } else {
+      // Fetch all users
+      const users = await User.find();
+
+      res.status(200).json({
+        message: "All users fetched successfully",
+        users,
+      });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to fetch user data", error: error.message });
   }
 });
 
