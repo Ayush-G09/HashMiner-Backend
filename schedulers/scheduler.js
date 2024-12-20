@@ -5,16 +5,15 @@ const mineCoins = async () => {
   try {
     const users = await User.find();
 
-    for (const user of users) {  // Using `for...of` instead of `forEach`
+    for (const user of users) {
       let updated = false;
 
-      for (const miner of user.miners) {  // Loop through miners
+      for (const miner of user.miners) {
         if (miner.status === "Running") {
           miner.coinsMined += miner.hashRate;
 
-          // Stop the miner if coinsMined reaches capacity
           if (miner.coinsMined >= miner.capacity) {
-            miner.coinsMined = miner.capacity; // Cap the coins mined
+            miner.coinsMined = miner.capacity;
             miner.status = "Stopped";
           }
 
@@ -23,7 +22,7 @@ const mineCoins = async () => {
       }
 
       if (updated) {
-        await user.save(); // Wait for user to be saved after modifications
+        await user.save();
       }
     }
 
@@ -33,5 +32,5 @@ const mineCoins = async () => {
   }
 };
 
-// Run every hour
-setInterval(mineCoins, 1000 * 60 * 2); // 1 hour
+// Run the mining function immediately
+mineCoins();
