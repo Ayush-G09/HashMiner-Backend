@@ -220,4 +220,40 @@ router.get("/user/:id?", async (req, res) => {
   }
 });
 
+// 4. API: Add or Update User Image
+router.post("/user/:id/image", async (req, res) => {
+  const { id } = req.params; // User ID from route params
+  const { image } = req.body; // Data URI of the image
+
+  if (!image) {
+    return res.status(400).json({ message: "Image data is required" });
+  }
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Add or Update the image field
+    user.image = image;
+    await user.save();
+
+    res.status(200).json({
+      message: user.image ? "Image updated successfully" : "Image added successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        image: user.image,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to add/update image", error: error.message });
+  }
+});
+
+
 module.exports = router;

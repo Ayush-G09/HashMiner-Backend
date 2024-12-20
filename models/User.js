@@ -15,6 +15,7 @@ const UserSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   miners: { type: [MinerSchema], default: [] },
   referredBy: { type: String, default: null },
+  image: { type: String, default: null },
 });
 
 module.exports = mongoose.model("User", UserSchema);
