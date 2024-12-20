@@ -257,4 +257,44 @@ router.post("/user/:id/image", async (req, res) => {
 });
 
 
+router.post("/update-mining-progress", async (req, res) => {
+  try {
+    const users = await User.find(); // Fetch all users
+
+    // Iterate over each user to update mining progress
+    for (const user of users) {
+      let updated = false;
+
+      // Check each miner associated with the user
+      for (const miner of user.miners) {
+        if (miner.status === "Running") {
+          // Increment the coins mined based on the miner's hashRate
+          miner.coinsMined += miner.hashRate;
+
+          // Stop the miner if coins mined reach the miner's capacity
+          if (miner.coinsMined >= miner.capacity) {
+            miner.coinsMined = miner.capacity;
+            miner.status = "Stopped"; // Stop mining when capacity is reached
+          }
+
+          updated = true;
+        }
+      }
+
+      // If any miner's progress was updated, save the user data
+      if (updated) {
+        await user.save();
+      }
+    }
+
+    // Respond with a success message
+    res.status(200).json({ message: "Mining progress updated for all users successfully" });
+  } catch (error) {
+    console.error("Error during mining update:", error.message);
+    res.status(500).json({ message: "Failed to update mining progress", error: error.message });
+  }
+});
+
+
+
 module.exports = router;

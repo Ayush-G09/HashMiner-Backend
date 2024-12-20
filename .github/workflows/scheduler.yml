@@ -1,31 +1,17 @@
-name: Scheduled Mining Job
+name: Update Mining Progress
 
 on:
   schedule:
-    - cron: "*/2 * * * *" # Runs every 2 minutes
-  workflow_dispatch: # Allows manual trigger for debugging or testing
+    - cron: '*/2 * * * *'  # Runs every 2 minutes
 
 jobs:
-  run-mining-job:
+  update-mining-progress:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18' # Use the appropriate Node.js version
-
-      # Step 3: Install dependencies
-      - name: Install dependencies
-        run: npm install
-
-      # Step 4: Run the mining script
-      - name: Run mining script
-        run: node ./schedulers/scheduler.js
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }} # Only MONGODB_URI is required
+      - name: Call /update-mining-progress API
+        run: |
+          curl -X POST https://hash-miner-backend.vercel.app/api/auth/update-mining-progress
