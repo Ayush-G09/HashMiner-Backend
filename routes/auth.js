@@ -381,14 +381,18 @@ router.get("/get-coin-price", async (req, res) => {
       return res.status(404).json({ message: "Coin price data not found" });
     }
 
-    // Respond with the coin price data
-    res.status(200).json({
-      message: "Coin price data retrieved successfully",
-      coinPrice,
-    });
+    // Extract only the relevant data (labels and datasets)
+    const responseData = {
+      labels: coinPrice.labels,
+      datasets: coinPrice.datasets,
+    };
+
+    // Respond with the required coin price data
+    res.status(200).json(responseData);
   } catch (error) {
     res.status(500).json({ message: "Failed to retrieve coin price data", error: error.message });
   }
 });
+
 
 module.exports = router;
