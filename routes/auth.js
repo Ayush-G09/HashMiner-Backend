@@ -400,7 +400,7 @@ router.get("/get-coin-price", async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
   try {
     // Fetch top 50 users sorted by totalCoinsMined
-    const leaderboard = await User.find({})
+    const leaderboard = await User.find({ totalCoinsMined: { $gt: 0 } })
       .sort({ totalCoinsMined: -1 })
       .limit(50)
       .select('username totalCoinsMined image'); // Select only necessary fields
