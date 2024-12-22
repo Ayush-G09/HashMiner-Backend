@@ -5,6 +5,7 @@ const nodemailer = require("nodemailer");
 const User = require("../models/User");
 const generateOTP = require("../utils/otpGenerator");
 const MINER_CONFIG = require("../config/minersConfig");
+const CoinPrice = require("../models/CoinPrice");
 
 const router = express.Router();
 
@@ -302,6 +303,90 @@ router.post("/user/:id/image", async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Failed to add/update image", error: error.message });
+  }
+});
+
+router.post("/update-coin-price", async (req, res) => {
+  const { data } = req.body; // The new data value for the last entry
+
+  if (data === undefined) {
+    return res.status(400).json({ message: "Data value is required" });
+  }
+
+  try {
+    // Get today's day of the week
+    const today = moment().format("ddd"); // Format: Mon, Tue, etc.
+
+    // Find the coin price data document
+    let coinPrice = await CoinPrice.findOne();
+
+    // If no document exists, create a new one
+    if (!coinPrice) {
+      coinPrice = await CoinPrice.create({
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [
+          {
+            data: [20, 45, 28, 80, 99, 43, 50],
+          },
+        ],
+      });
+    }
+
+    // Find the index of today in the labels array
+    const todayIndex = coinPrice.labels.indexOf(today);
+
+    // If today is not the last label, shift labels and data
+    if (todayIndex !== coinPrice.labels.length - 1) {
+      // Shift labels and data forward, maintaining order
+      coinPrice.labels.shift();
+      coinPrice.labels.push(today);
+
+      // Check for missing days (if today is not in sequence)
+      const lastDataValue = coinPrice.datasets[0].data[coinPrice.datasets[0].data.length - 1];
+
+      // Add the new value or repeat the previous day's value if it's missing
+      coinPrice.datasets[0].data.shift();
+      coinPrice.datasets[0].data.push(data);
+
+      // Ensure that if a missing day was detected, we use the previous day's value
+      if (todayIndex === coinPrice.labels.length - 2) {
+        coinPrice.datasets[0].data[coinPrice.datasets[0].data.length - 2] = lastDataValue;
+      }
+    } else {
+      // If today is the last label, update the value directly
+      coinPrice.datasets[0].data[coinPrice.datasets[0].data.length - 1] = data;
+    }
+
+    // Save the updated document
+    await coinPrice.save();
+
+    res.status(200).json({
+      message: "Coin price data updated successfully",
+      coinPrice,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update coin price data", error: error.message });
+  }
+});
+
+// 6. API: Get current coin price data
+router.get("/get-coin-price", async (req, res) => {
+  try {
+    // Find the coin price data document
+    const coinPrice = await CoinPrice.findOne();
+
+    // If no document exists, return a 404 error
+    if (!coinPrice) {
+      return res.status(404).json({ message: "Coin price data not found" });
+    }
+
+    // Respond with the coin price data
+    res.status(200).json({
+      message: "Coin price data retrieved successfully",
+      coinPrice,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to retrieve coin price data", error: error.message });
   }
 });
 
