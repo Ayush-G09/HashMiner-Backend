@@ -234,11 +234,22 @@ router.get("/user/:id?", async (req, res) => {
         const now = new Date();
         const elapsedMinutes = Math.floor((now - miner.lastCollected) / 60000);
 
-        // Only process if elapsedMinutes is 2 or more
-        if (elapsedMinutes >= 2) {
+        if (elapsedMinutes >= 2 && miner.coinsMined < miner.capacity) {
           const intervals = Math.floor(elapsedMinutes / 2); // Calculate full 2-minute intervals
-          miner.coinsMined += miner.hashRate * intervals; // Add hash rate for each interval
-          miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 2 * 60000); // Update lastCollected
+          const potentialCoins = miner.hashRate * intervals; // Potential coins to be mined
+
+          if (miner.coinsMined + potentialCoins >= miner.capacity) {
+            miner.coinsMined = miner.capacity; // Set coinsMined to capacity
+            miner.status = "stopped"; // Update status to stopped
+          } else {
+            miner.coinsMined += potentialCoins; // Add hash rate for each interval
+            miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 2 * 60000); // Update lastCollected
+          }
+        }
+
+        // If coinsMined is already at capacity, set status to stopped
+        if (miner.coinsMined >= miner.capacity) {
+          miner.status = "stopped";
         }
       });
 
@@ -252,6 +263,7 @@ router.get("/user/:id?", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch user data", error: error.message });
   }
 });
+
 
 
 // 4. API: Add or Update User Image
