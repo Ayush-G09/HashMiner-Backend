@@ -240,7 +240,7 @@ router.get("/user/:id?", async (req, res) => {
 
           if (miner.coinsMined + potentialCoins >= miner.capacity) {
             miner.coinsMined = miner.capacity; // Set coinsMined to capacity
-            miner.status = "stopped"; // Update status to stopped
+            miner.status = "Stopped"; // Update status to stopped
           } else {
             miner.coinsMined += potentialCoins; // Add hash rate for each interval
             miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 2 * 60000); // Update lastCollected
@@ -249,7 +249,7 @@ router.get("/user/:id?", async (req, res) => {
 
         // If coinsMined is already at capacity, set status to stopped
         if (miner.coinsMined >= miner.capacity) {
-          miner.status = "stopped";
+          miner.status = "Stopped";
         }
       });
 
