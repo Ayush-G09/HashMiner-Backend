@@ -210,6 +210,7 @@ router.post("/collect-coins/:userId/:minerId", async (req, res) => {
     user.balance += miner.coinsMined;
     miner.coinsMined = 0;
     miner.status = "Running"; // Restart mining
+    miner.lastCollected = new Date(); // Update lastCollected
 
     await user.save();
 
