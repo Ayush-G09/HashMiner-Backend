@@ -232,6 +232,11 @@ router.get("/user/:id?", async (req, res) => {
       }
 
       user.miners.forEach((miner) => {
+        // Skip calculations if the miner is not in "running" status
+        if (miner.status !== "running") {
+          return;
+        }
+
         const now = new Date();
         const elapsedMinutes = Math.floor((now - miner.lastCollected) / 60000);
 
@@ -241,7 +246,7 @@ router.get("/user/:id?", async (req, res) => {
 
           if (miner.coinsMined + potentialCoins >= miner.capacity) {
             miner.coinsMined = miner.capacity; // Set coinsMined to capacity
-            miner.status = "Stopped"; // Update status to stopped
+            miner.status = "stopped"; // Update status to stopped
           } else {
             miner.coinsMined += potentialCoins; // Add hash rate for each interval
             miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 2 * 60000); // Update lastCollected
@@ -250,7 +255,7 @@ router.get("/user/:id?", async (req, res) => {
 
         // If coinsMined is already at capacity, set status to stopped
         if (miner.coinsMined >= miner.capacity) {
-          miner.status = "Stopped";
+          miner.status = "stopped";
         }
       });
 
@@ -264,8 +269,6 @@ router.get("/user/:id?", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch user data", error: error.message });
   }
 });
-
-
 
 // 4. API: Add or Update User Image
 router.post("/user/:id/image", async (req, res) => {
