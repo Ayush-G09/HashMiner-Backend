@@ -210,6 +210,7 @@ router.post("/collect-coins/:userId/:minerId", async (req, res) => {
 
     // Add coinsMined to user balance and reset miner
     user.balance += miner.coinsMined;
+    user.totalCoinsMined += miner.coinsMined;
     miner.coinsMined = 0;
     miner.status = "Running"; // Restart mining
     miner.lastCollected = new Date(); // Update lastCollected
@@ -391,6 +392,29 @@ router.get("/get-coin-price", async (req, res) => {
     res.status(200).json(responseData);
   } catch (error) {
     res.status(500).json({ message: "Failed to retrieve coin price data", error: error.message });
+  }
+});
+
+
+// Leaderboard API
+router.get('/leaderboard', async (req, res) => {
+  try {
+    // Fetch top 50 users sorted by totalCoinsMined
+    const leaderboard = await User.find({})
+      .sort({ totalCoinsMined: -1 })
+      .limit(50)
+      .select('username totalCoinsMined image'); // Select only necessary fields
+
+    res.status(200).json({
+      success: true,
+      data: leaderboard,
+    });
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
   }
 });
 
