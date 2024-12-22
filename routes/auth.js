@@ -166,6 +166,33 @@ router.post("/add-miner/:userId", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Failed to add miner", error: error.message });
   }
+});router.post("/add-miner/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const { type } = req.body;
+
+  if (!type || !MINER_CONFIG[type]) {
+    return res.status(400).json({ message: "Invalid or missing miner type." });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const { hashRate, capacity } = MINER_CONFIG[type];
+    user.miners.push({
+      type,
+      hashRate,
+      coinsMined: 0,
+      capacity,
+      status: "Running",
+      lastCollected: new Date(),
+    });
+
+    await user.save();
+    res.status(200).json({ message: "Miner added successfully", miners: user.miners });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to add miner", error: error.message });
+  }
 });
 
 // 2. Collect Mined Coins and Update Balance
@@ -193,33 +220,39 @@ router.post("/collect-coins/:userId/:minerId", async (req, res) => {
 });
 
 router.get("/user/:id?", async (req, res) => {
-  const { id } = req.params; // Optional user ID
+  const { id } = req.params;
 
   try {
     if (id) {
-      // Fetch a specific user by ID
       const user = await User.findById(id);
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
+      user.miners.forEach((miner) => {
+        const now = new Date();
+        const elapsedMinutes = Math.floor((now - miner.lastCollected) / 60000);
+
+        // Only process if elapsedMinutes is 2 or more
+        if (elapsedMinutes >= 2) {
+          const intervals = Math.floor(elapsedMinutes / 2); // Calculate full 2-minute intervals
+          miner.coinsMined += miner.hashRate * intervals; // Add hash rate for each interval
+          miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 2 * 60000); // Update lastCollected
+        }
+      });
+
+      await user.save();
       res.status(200).json({ message: "User data fetched successfully", user });
     } else {
-      // Fetch all users
       const users = await User.find();
-
-      res.status(200).json({
-        message: "All users fetched successfully",
-        users,
-      });
+      res.status(200).json({ message: "All users fetched successfully", users });
     }
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to fetch user data", error: error.message });
+    res.status(500).json({ message: "Failed to fetch user data", error: error.message });
   }
 });
+
 
 // 4. API: Add or Update User Image
 router.post("/user/:id/image", async (req, res) => {
@@ -255,46 +288,5 @@ router.post("/user/:id/image", async (req, res) => {
     res.status(500).json({ message: "Failed to add/update image", error: error.message });
   }
 });
-
-
-router.post("/update-mining-progress", async (req, res) => {
-  try {
-    const users = await User.find(); // Fetch all users
-
-    // Iterate over each user to update mining progress
-    for (const user of users) {
-      let updated = false;
-
-      // Check each miner associated with the user
-      for (const miner of user.miners) {
-        if (miner.status === "Running") {
-          // Increment the coins mined based on the miner's hashRate
-          miner.coinsMined += miner.hashRate;
-
-          // Stop the miner if coins mined reach the miner's capacity
-          if (miner.coinsMined >= miner.capacity) {
-            miner.coinsMined = miner.capacity;
-            miner.status = "Stopped"; // Stop mining when capacity is reached
-          }
-
-          updated = true;
-        }
-      }
-
-      // If any miner's progress was updated, save the user data
-      if (updated) {
-        await user.save();
-      }
-    }
-
-    // Respond with a success message
-    res.status(200).json({ message: "Mining progress updated for all users successfully" });
-  } catch (error) {
-    console.error("Error during mining update:", error.message);
-    res.status(500).json({ message: "Failed to update mining progress", error: error.message });
-  }
-});
-
-
 
 module.exports = router;

@@ -6,6 +6,7 @@ const MinerSchema = new mongoose.Schema({
   coinsMined: { type: Number, default: 0 },
   capacity: { type: Number, required: true },
   status: { type: String, enum: ["Running", "Stopped"], default: "Running" },
+  lastCollected: { type: Date, default: () => new Date() },
 });
 
 const UserSchema = new mongoose.Schema({
@@ -15,7 +16,7 @@ const UserSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   miners: { type: [MinerSchema], default: [] },
   referredBy: { type: String, default: null },
-  image: { type: String, default: null },
+  image: { type: String, default: '' },
 });
 
 module.exports = mongoose.model("User", UserSchema);
