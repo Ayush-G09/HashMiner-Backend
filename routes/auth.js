@@ -6,6 +6,7 @@ const User = require("../models/User");
 const generateOTP = require("../utils/otpGenerator");
 const MINER_CONFIG = require("../config/minersConfig");
 const CoinPrice = require("../models/CoinPrice");
+const moment = require('moment');
 
 const router = express.Router();
 
