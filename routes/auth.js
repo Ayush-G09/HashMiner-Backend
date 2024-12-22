@@ -240,8 +240,8 @@ router.get("/user/:id?", async (req, res) => {
         const now = new Date();
         const elapsedMinutes = Math.floor((now - miner.lastCollected) / 60000);
 
-        if (elapsedMinutes >= 2 && miner.coinsMined < miner.capacity) {
-          const intervals = Math.floor(elapsedMinutes / 2); // Calculate full 2-minute intervals
+        if (elapsedMinutes >= 1 && miner.coinsMined < miner.capacity) {
+          const intervals = Math.floor(elapsedMinutes / 1); // Calculate full 1-minute intervals
           const potentialCoins = miner.hashRate * intervals; // Potential coins to be mined
 
           if (miner.coinsMined + potentialCoins >= miner.capacity) {
@@ -249,7 +249,7 @@ router.get("/user/:id?", async (req, res) => {
             miner.status = "Stopped"; // Update status to stopped
           } else {
             miner.coinsMined += potentialCoins; // Add hash rate for each interval
-            miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 2 * 60000); // Update lastCollected
+            miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 1 * 60000); // Update lastCollected
           }
         }
 
