@@ -406,15 +406,53 @@ router.get('/leaderboard', async (req, res) => {
       .select('username totalCoinsMined image'); // Select only necessary fields
 
     res.status(200).json({
-      success: true,
       data: leaderboard,
     });
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     res.status(500).json({
-      success: false,
       message: 'Internal server error',
     });
+  }
+});
+
+router.post('/transaction', async (req, res) => {
+  try {
+      const { userId, title, of } = req.body;
+
+      // Validate required fields
+      if (!userId || !title || !of) {
+          return res.status(400).json({ error: 'Missing required fields: userId, title, and of' });
+      }
+
+      // Generate current date in dd/mm/yy format
+      const formattedDate = moment().format('DD/MM/YY');
+
+      // Create new transaction object
+      const newTransaction = {
+          title,
+          of,
+          date: formattedDate,
+          status: 'pending',
+      };
+
+      // Find the user and update their transactions
+      const user = await User.findById(userId);
+      if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+      }
+
+      user.transactions.push(newTransaction);
+      await user.save();
+
+      // Respond with the created transaction
+      res.status(201).json({
+          message: 'Transaction created successfully',
+          transaction: newTransaction,
+      });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
   }
 });
 

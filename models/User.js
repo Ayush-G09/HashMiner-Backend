@@ -9,6 +9,13 @@ const MinerSchema = new mongoose.Schema({
   lastCollected: { type: Date, default: () => new Date() },
 });
 
+const TransactionSchema = new mongoose.Schema({
+  title: {type: String},
+  date: {type: Date, default: () => new Date()},
+  of: {type: String, enum: ["Withdraw", "Bought"]},
+  status: {type: String, enum: ["Completed", "Pending"]},
+});
+
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -18,6 +25,7 @@ const UserSchema = new mongoose.Schema({
   referredBy: { type: String, default: null },
   image: { type: String, default: '' },
   totalCoinsMined: { type: Number, default: 0 },
+  transactions: {type: [TransactionSchema], default: []},
 });
 
 module.exports = mongoose.model("User", UserSchema);
