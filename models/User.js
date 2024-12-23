@@ -15,6 +15,7 @@ const TransactionSchema = new mongoose.Schema({
   date: { type: String, default: () => moment().format('DD/MM/YY') },
   status: {type: String, enum: ["Completed", "Pending"]},
   amount: {type: Number},
+  to: {type: String},
 });
 
 const UserSchema = new mongoose.Schema({

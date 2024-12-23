@@ -453,6 +453,7 @@ router.post('/transaction', async (req, res) => {
           title,
           date: formattedDate,
           status: 'Pending',
+          to: user.upiID,
       };
 
       // If the transaction type is "Coin", deduct the amount from the user's balance
@@ -510,5 +511,36 @@ router.get("/transactions/:userId", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch transactions", error: error.message });
   }
 });
+
+router.put("/user/upi", async (req, res) => {
+  try {
+    const { userId, upiID } = req.body;
+
+    // Validate required fields
+    if (!userId || !upiID) {
+      return res.status(400).json({ error: "Missing required fields: userId and upiID" });
+    }
+
+    // Find the user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update or add the upiID
+    user.upiID = upiID;
+
+    // Save the user with the updated information
+    await user.save();
+
+    res.status(200).json({
+      message: "UPI ID updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating UPI ID:", error);
+    res.status(500).json({ error: "Internal server error", details: error.message });
+  }
+});
+
 
 module.exports = router;
