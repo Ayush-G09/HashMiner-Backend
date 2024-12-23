@@ -473,10 +473,11 @@ router.post('/transaction', async (req, res) => {
           transaction: newTransaction,
       });
   } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error during transaction processing:', error);  // Log the full error
+      res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
+
 
 
 module.exports = router;
