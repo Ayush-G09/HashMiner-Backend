@@ -444,7 +444,7 @@ router.post('/transaction', async (req, res) => {
           type,
           title,
           date: formattedDate,
-          status: 'pending',
+          status: 'Pending',
       };
 
       // If the transaction type is "Coin", deduct the amount from the user's balance
@@ -455,7 +455,6 @@ router.post('/transaction', async (req, res) => {
 
           user.balance -= amount;  // Deduct the amount from the user's balance
           newTransaction.amount = amount;
-          newTransaction.status = 'completed';  // Set status to completed after deduction
       }
 
       // If the transaction type is "Miner", only create the transaction without updating balance
