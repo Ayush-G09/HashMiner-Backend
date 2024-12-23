@@ -547,5 +547,45 @@ router.put("/user/upi", async (req, res) => {
   }
 });
 
+// 1. API: Send OTP to user email
+router.post("/reset-password-send-otp", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) return res.status(400).json({ message: "Email is required" });
+
+  const otp = generateOTP();
+
+  // Send OTP via email
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "HashMiner OTP for Password Reset",
+    text: `Dear User,
+    
+    We received a request to reset your password for your HashMiner account. To proceed, please use the following One-Time Password (OTP):
+    
+    🔒 Your OTP Code: ${otp}
+    
+    This code is valid for the next 10 minutes. Please do not share this code with anyone for security reasons.
+    
+    If you did not request a password reset, please ignore this email or contact our support team for assistance.
+    
+    Best regards,  
+    The HashMiner Team  
+    `,
+  };
+
+  console.log('called', otp);
+  
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: "OTP sent successfully", otp }); // OTP sent in response for testing
+  } catch (error) {
+    res.status(500).json({ message: "Failed to send OTP", error: error.message });
+    console.log(error);
+  }
+});
+
 
 module.exports = router;
