@@ -27,6 +27,7 @@ const UserSchema = new mongoose.Schema({
   image: { type: String, default: '' },
   totalCoinsMined: { type: Number, default: 0 },
   transactions: {type: [TransactionSchema], default: []},
+  upiID: { type: String, default: '' },
 });
 
 module.exports = mongoose.model("User", UserSchema);

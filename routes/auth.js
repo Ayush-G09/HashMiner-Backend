@@ -436,6 +436,14 @@ router.post('/transaction', async (req, res) => {
           return res.status(404).json({ error: 'User not found' });
       }
 
+      if(user.balance < amount) {
+        return res.status(400).json({ error: 'Insufficient balance' });
+      }
+
+      if(!user.upiID){
+        return res.status(400).json({ error: 'UPI ID is not set' });
+      }
+
       // Generate current date in dd/mm/yy format
       const formattedDate = moment().format('DD/MM/YY');
 
