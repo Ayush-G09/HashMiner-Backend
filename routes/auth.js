@@ -27,6 +27,11 @@ router.post("/send-otp", async (req, res) => {
 
   if (!email) return res.status(400).json({ message: "Email is required" });
 
+  const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
   const otp = generateOTP();
 
   // Send OTP via email
