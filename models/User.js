@@ -12,7 +12,7 @@ const MinerSchema = new mongoose.Schema({
 const TransactionSchema = new mongoose.Schema({
   type: {type: String, enum: ["Coin", "Miner"]},
   title: {type: String},
-  date: {type: Date, default: () => new Date()},
+  date: { type: String, default: () => moment().format('DD/MM/YY') },
   status: {type: String, enum: ["Completed", "Pending"]},
   amount: {type: Number},
 });
