@@ -477,6 +477,30 @@ router.post('/transaction', async (req, res) => {
   }
 });
 
+// API: Get all transactions of a user, sorted by most recent first
+router.get("/transactions/:userId", async (req, res) => {
+  const { userId } = req.params;
 
+  try {
+    // Find the user by userId and populate the transactions array
+    const user = await User.findById(userId).select("transactions");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Sort transactions by date in descending order (most recent first)
+    const sortedTransactions = user.transactions.sort((a, b) => {
+      const dateA = moment(a.date, "DD/MM/YY").toDate();
+      const dateB = moment(b.date, "DD/MM/YY").toDate();
+      return dateB - dateA; // Sort in descending order
+    });
+
+    // Return the sorted transactions
+    res.status(200).json({ message: "Transactions fetched successfully", transactions: sortedTransactions });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch transactions", error: error.message });
+  }
+});
 
 module.exports = router;
