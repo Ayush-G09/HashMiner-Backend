@@ -418,23 +418,17 @@ router.get('/leaderboard', async (req, res) => {
 
 router.post('/transaction', async (req, res) => {
   try {
-      const { userId, title, of } = req.body;
+      const { userId, title, type, amount } = req.body;
 
       // Validate required fields
-      if (!userId || !title || !of) {
-          return res.status(400).json({ error: 'Missing required fields: userId, title, and of' });
+      if (!userId || !title || !type) {
+          return res.status(400).json({ error: 'Missing required fields: userId, title, of, and type' });
       }
 
-      // Generate current date in dd/mm/yy format
-      const formattedDate = moment().format('DD/MM/YY');
-
-      // Create new transaction object
-      const newTransaction = {
-          title,
-          of,
-          date: formattedDate,
-          status: 'pending',
-      };
+      // If the transaction type is "Coin", validate that the amount is provided
+      if (type === "Coin" && !amount) {
+          return res.status(400).json({ error: 'Missing required field: amount for Coin type transactions' });
+      }
 
       // Find the user and update their transactions
       const user = await User.findById(userId);
@@ -442,6 +436,34 @@ router.post('/transaction', async (req, res) => {
           return res.status(404).json({ error: 'User not found' });
       }
 
+      // Generate current date in dd/mm/yy format
+      const formattedDate = moment().format('DD/MM/YY');
+
+      // Create new transaction object
+      const newTransaction = {
+          type,
+          title,
+          date: formattedDate,
+          status: 'pending',
+      };
+
+      // If the transaction type is "Coin", deduct the amount from the user's balance
+      if (type === "Coin") {
+          if (user.balance < amount) {
+              return res.status(400).json({ error: 'Insufficient balance' });
+          }
+
+          user.balance -= amount;  // Deduct the amount from the user's balance
+          newTransaction.amount = amount;
+          newTransaction.status = 'completed';  // Set status to completed after deduction
+      }
+
+      // If the transaction type is "Miner", only create the transaction without updating balance
+      if (type === "Miner") {
+          newTransaction.amount = 0;  // No amount for Miner type transactions
+      }
+
+      // Push the new transaction to the user's transactions array
       user.transactions.push(newTransaction);
       await user.save();
 
