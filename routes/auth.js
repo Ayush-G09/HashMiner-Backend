@@ -492,7 +492,7 @@ router.get("/transactions/:userId", async (req, res) => {
 
   try {
     // Find the user by userId and populate the transactions array
-    const user = await User.findById(userId).select("transactions");
+    const user = await User.findById(userId).select("transactions upiID");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
