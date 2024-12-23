@@ -506,7 +506,7 @@ router.get("/transactions/:userId", async (req, res) => {
     });
 
     // Return the sorted transactions
-    res.status(200).json({ message: "Transactions fetched successfully", transactions: sortedTransactions });
+    res.status(200).json({ message: "Transactions fetched successfully", transactions: sortedTransactions, upiId: user.upiID });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch transactions", error: error.message });
   }
