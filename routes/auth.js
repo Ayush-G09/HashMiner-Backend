@@ -469,7 +469,7 @@ router.post('/transaction', async (req, res) => {
       // Respond with the created transaction
       res.status(201).json({
           message: 'Transaction created successfully',
-          transactions: user.transactions.find,
+          transactions: user.transactions,
       });
   } catch (error) {
       console.error('Error during transaction processing:', error);  // Log the full error
