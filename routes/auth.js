@@ -7,6 +7,7 @@ const generateOTP = require("../utils/otpGenerator");
 const MINER_CONFIG = require("../config/minersConfig");
 const CoinPrice = require("../models/CoinPrice");
 const moment = require('moment');
+const authorize = require('../middleware/AuthMiddleware');
 
 const router = express.Router();
 
@@ -143,37 +144,7 @@ router.delete("/delete-all-users", async (req, res) => {
 });
 
 // Add a Miner to the User
-router.post("/add-miner/:userId", async (req, res) => {
-  const { userId } = req.params;
-  const { type } = req.body; // Only miner type will be sent
-
-  // Validate the miner type
-  if (!type || !MINER_CONFIG[type]) {
-    return res.status(400).json({ message: "Invalid or missing miner type." });
-  }
-
-  try {
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found." });
-
-    // Predefined hashRate and capacity from config
-    const { hashRate, capacity } = MINER_CONFIG[type];
-
-    // Add the miner to the user's miners array
-    user.miners.push({
-      type,
-      hashRate,
-      coinsMined: 0,
-      capacity,
-      status: "Running",
-    });
-
-    await user.save();
-    res.status(200).json({ message: "Miner added successfully", miners: user.miners });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to add miner", error: error.message });
-  }
-});router.post("/add-miner/:userId", async (req, res) => {
+router.post("/add-miner/:userId", authorize, async (req, res) => {
   const { userId } = req.params;
   const { type } = req.body;
 
@@ -203,7 +174,7 @@ router.post("/add-miner/:userId", async (req, res) => {
 });
 
 // 2. Collect Mined Coins and Update Balance
-router.post("/collect-coins/:userId/:minerId", async (req, res) => {
+router.post("/collect-coins/:userId/:minerId", authorize, async (req, res) => {
   const { userId, minerId } = req.params;
 
   try {
@@ -228,7 +199,7 @@ router.post("/collect-coins/:userId/:minerId", async (req, res) => {
   }
 });
 
-router.get("/user/:id?", async (req, res) => {
+router.get("/user/:id?", authorize, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -279,7 +250,7 @@ router.get("/user/:id?", async (req, res) => {
 });
 
 // 4. API: Add or Update User Image
-router.post("/user/:id/image", async (req, res) => {
+router.post("/user/:id/image", authorize, async (req, res) => {
   const { id } = req.params; // User ID from route params
   const { image } = req.body; // Data URI of the image
 
@@ -377,7 +348,7 @@ router.post("/update-coin-price", async (req, res) => {
 });
 
 // 6. API: Get current coin price data
-router.get("/get-coin-price", async (req, res) => {
+router.get("/get-coin-price", authorize, async (req, res) => {
   try {
     // Find the coin price data document
     const coinPrice = await CoinPrice.findOne();
@@ -402,7 +373,7 @@ router.get("/get-coin-price", async (req, res) => {
 
 
 // Leaderboard API
-router.get('/leaderboard', async (req, res) => {
+router.get('/leaderboard', authorize, async (req, res) => {
   try {
     // Fetch top 50 users sorted by totalCoinsMined
     const leaderboard = await User.find({ totalCoinsMined: { $gt: 0 } })
@@ -421,7 +392,7 @@ router.get('/leaderboard', async (req, res) => {
   }
 });
 
-router.post('/transaction', async (req, res) => {
+router.post('/transaction', authorize, async (req, res) => {
   try {
       const { userId, title, type, amount } = req.body;
 
@@ -492,7 +463,7 @@ router.post('/transaction', async (req, res) => {
 });
 
 // API: Get all transactions of a user, sorted by most recent first
-router.get("/transactions/:userId", async (req, res) => {
+router.get("/transactions/:userId", authorize, async (req, res) => {
   const { userId } = req.params;
 
   try {
@@ -517,7 +488,7 @@ router.get("/transactions/:userId", async (req, res) => {
   }
 });
 
-router.put("/user/upi", async (req, res) => {
+router.put("/user/upi", authorize, async (req, res) => {
   try {
     const { userId, upiID } = req.body;
 
