@@ -547,7 +547,7 @@ router.put("/user/upi", async (req, res) => {
   }
 });
 
-// 1. API: Send OTP to user email
+// API: Send OTP to user email for reset password
 router.post("/reset-password-send-otp", async (req, res) => {
   const { email } = req.body;
 
@@ -584,6 +584,36 @@ router.post("/reset-password-send-otp", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Failed to send OTP", error: error.message });
     console.log(error);
+  }
+});
+
+
+// Reset Password API
+router.post("/reset-password", async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  // Validate fields
+  if (!email || !newPassword) {
+    return res.status(400).json({ message: "Email and new password are required" });
+  }
+
+  try {
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update the user's password
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to reset password", error: error.message });
   }
 });
 
