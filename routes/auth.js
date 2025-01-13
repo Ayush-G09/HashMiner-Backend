@@ -200,7 +200,7 @@ router.post("/collect-coins/:userId/:minerId", authorize, async (req, res) => {
   }
 });
 
-router.get("/user/:id?", authorize, async (req, res) => {
+router.get("/user/:id?", async (req, res) => {
   const { id } = req.params;
 
   try {
