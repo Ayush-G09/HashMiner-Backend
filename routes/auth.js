@@ -671,7 +671,7 @@ router.put('/update-miner/:id', async (req, res) => {
       return res.status(404).json({ message: 'Miner not found.' });
     }
 
-    res.status(200).json(updatedMiner);
+    res.status(200).json({miner: updatedMiner});
   } catch (error) {
     console.error('Error updating miner:', error);
     res.status(500).json({ message: 'Internal server error.' });
