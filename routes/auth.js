@@ -655,4 +655,27 @@ router.delete('/delete-miner/:id', async (req, res) => {
   }
 });
 
+// Route to update a miner by ID
+router.put('/update-miner/:id', async (req, res) => {
+  const { id } = req.params;
+  const updatedMinerData = req.body; // The new data for the miner
+
+  try {
+    // Find the miner by ID and update it with the new data
+    const updatedMiner = await Miner.findByIdAndUpdate(id, updatedMinerData, {
+      new: true, // Return the updated document
+      runValidators: true, // Validate the data according to the schema
+    });
+
+    if (!updatedMiner) {
+      return res.status(404).json({ message: 'Miner not found.' });
+    }
+
+    res.status(200).json(updatedMiner);
+  } catch (error) {
+    console.error('Error updating miner:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
 module.exports = router;
