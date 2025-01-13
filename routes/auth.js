@@ -200,7 +200,7 @@ router.post("/collect-coins/:userId/:minerId", authorize, async (req, res) => {
   }
 });
 
-router.get("/user/:id?", async (req, res) => {
+router.get("/user/:id?", authorize, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -677,5 +677,36 @@ router.put('/update-miner/:id', async (req, res) => {
     res.status(500).json({ message: 'Internal server error.' });
   }
 });
+
+router.get("/statistics", async (req, res) => {
+  try {
+    // Fetch the total user count
+    const totalUsers = await User.countDocuments();
+
+    // Use aggregation to count all pending transactions across all users
+    const result = await User.aggregate([
+      { $unwind: "$transactions" }, // Unwind the transactions array
+      { $match: { "transactions.status": "Pending" } }, // Match only pending transactions
+      { $count: "totalPendingTransactions" }, // Count the matching transactions
+    ]);
+
+    // Extract the totalPendingTransactions count
+    const totalPendingTransactions = result[0]?.totalPendingTransactions || 0;
+
+    res.status(200).json({
+      message: "Statistics fetched successfully",
+      data: {
+        totalUsers,
+        totalPendingTransactions,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch statistics",
+      error: error.message,
+    });
+  }
+});
+
 
 module.exports = router;
