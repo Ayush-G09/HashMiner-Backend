@@ -636,4 +636,23 @@ router.get('/all-miners', async (req, res) => {
   }
 });
 
+// Route to delete a miner by ID
+router.delete('/delete-miner/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find the miner by ID and remove it from the database
+    const miner = await Miner.findByIdAndDelete(id);
+
+    if (!miner) {
+      return res.status(404).json({ message: 'Miner not found.' });
+    }
+
+    res.status(200).json({ message: 'Miner deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting miner:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
 module.exports = router;
