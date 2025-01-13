@@ -708,5 +708,40 @@ router.get("/statistics", async (req, res) => {
   }
 });
 
+router.get("/user-pending-transactions", async (req, res) => {
+  try {
+    // Use aggregation to fetch user details and their pending transactions
+    const usersWithPendingTransactions = await User.aggregate([
+      {
+        $match: {
+          "transactions.status": "Pending", // Match users who have at least one pending transaction
+        },
+      },
+      {
+        $project: {
+          _id: 1, // Include the user ID
+          username: 1, // Include the username
+          pendingTransactions: {
+            $filter: {
+              input: "$transactions", // Iterate over the transactions array
+              as: "transaction",
+              cond: { $eq: ["$$transaction.status", "Pending"] }, // Filter for pending transactions
+            },
+          },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      message: "Users with pending transactions fetched successfully",
+      data: usersWithPendingTransactions,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch user pending transactions",
+      error: error.message,
+    });
+  }
+});
 
 module.exports = router;
