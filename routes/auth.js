@@ -8,6 +8,7 @@ const MINER_CONFIG = require("../config/minersConfig");
 const CoinPrice = require("../models/CoinPrice");
 const moment = require('moment');
 const authorize = require('../middleware/AuthMiddleware');
+const Miner = require('../models/Miners');
 
 const router = express.Router();
 
@@ -588,5 +589,51 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
+// Route to add a miner
+router.post('/add-miner', async (req, res) => {
+  try {
+    const { hashRate, capacity, image, name, desc, price } = req.body;
+
+    // Validation: Check if all required fields are present
+    if (!hashRate || !capacity || !image || !name || !desc || !price) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    // Create a new Miner document
+    const miner = new Miner({
+      hashRate,
+      capacity,
+      image,
+      name,
+      desc,
+      price,
+    });
+
+    // Save the miner to the database
+    await miner.save();
+
+    res.status(201).json({ message: 'Miner added successfully!', miner });
+  } catch (error) {
+    console.error('Error adding miner:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+// Route to get all miners
+router.get('/all-miners', async (req, res) => {
+  try {
+    // Retrieve all miners from the database
+    const miners = await Miner.find();
+
+    if (miners.length === 0) {
+      return res.status(404).json({ message: 'No miners found.' });
+    }
+
+    res.status(200).json({ miners });
+  } catch (error) {
+    console.error('Error fetching miners:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
 
 module.exports = router;
