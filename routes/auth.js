@@ -744,4 +744,48 @@ router.get("/user-pending-transactions", async (req, res) => {
   }
 });
 
+// API: Update transaction status
+router.put("/transactions/:userId/:transactionId", async (req, res) => {
+  const { userId, transactionId } = req.params;
+  const { status } = req.body; // The new status to update
+
+  // Validate the status field
+  if (!status) {
+    return res.status(400).json({ message: "Transaction status is required." });
+  }
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Find the transaction in the user's transactions array
+    const transaction = user.transactions.id(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found." });
+    }
+
+    // Update the transaction's status
+    transaction.status = status;
+
+    // Save the updated user document
+    await user.save();
+
+    res.status(200).json({
+      message: "Transaction status updated successfully.",
+      transaction,
+    });
+  } catch (error) {
+    console.error("Error updating transaction status:", error);
+    res.status(500).json({
+      message: "Failed to update transaction status.",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;
