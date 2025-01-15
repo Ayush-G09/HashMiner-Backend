@@ -9,6 +9,7 @@ const CoinPrice = require("../models/CoinPrice");
 const moment = require('moment');
 const authorize = require('../middleware/AuthMiddleware');
 const Miner = require('../models/Miners');
+const Balance = require("../models/Balance");
 
 const router = express.Router();
 
@@ -863,6 +864,22 @@ router.delete("/delete-all-coin-price-data", async (req, res) => {
   }
 });
 
+// API to get the current balance
+router.get("/get-balance", async (req, res) => {
+  try {
+    // Fetch the balance document
+    const balanceData = await Balance.findOne();
 
+    // If no balance document exists, return default balance
+    if (!balanceData) {
+      return res.json({ balance: 0 });
+    }
+
+    res.json({ balance: balanceData.balance });
+  } catch (error) {
+    console.error("Error fetching balance:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 module.exports = router;
