@@ -285,94 +285,6 @@ router.post("/user/:id/image", authorize, async (req, res) => {
   }
 });
 
-router.post("/update-coin-price", async (req, res) => {
-  const { data } = req.body; // The new data value for the last entry
-
-  if (data === undefined) {
-    return res.status(400).json({ message: "Data value is required" });
-  }
-
-  try {
-    // Get today's day of the week
-    const today = moment().format("ddd"); // Format: Mon, Tue, etc.
-
-    // Find the coin price data document
-    let coinPrice = await CoinPrice.findOne();
-
-    // If no document exists, create a new one
-    if (!coinPrice) {
-      coinPrice = await CoinPrice.create({
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [
-          {
-            data: [20, 45, 28, 80, 99, 43, 50],
-          },
-        ],
-      });
-    }
-
-    // Find the index of today in the labels array
-    const todayIndex = coinPrice.labels.indexOf(today);
-
-    // If today is not the last label, shift labels and data
-    if (todayIndex !== coinPrice.labels.length - 1) {
-      // Shift labels and data forward, maintaining order
-      coinPrice.labels.shift();
-      coinPrice.labels.push(today);
-
-      // Check for missing days (if today is not in sequence)
-      const lastDataValue = coinPrice.datasets[0].data[coinPrice.datasets[0].data.length - 1];
-
-      // Add the new value or repeat the previous day's value if it's missing
-      coinPrice.datasets[0].data.shift();
-      coinPrice.datasets[0].data.push(data);
-
-      // Ensure that if a missing day was detected, we use the previous day's value
-      if (todayIndex === coinPrice.labels.length - 2) {
-        coinPrice.datasets[0].data[coinPrice.datasets[0].data.length - 2] = lastDataValue;
-      }
-    } else {
-      // If today is the last label, update the value directly
-      coinPrice.datasets[0].data[coinPrice.datasets[0].data.length - 1] = data;
-    }
-
-    // Save the updated document
-    await coinPrice.save();
-
-    res.status(200).json({
-      message: "Coin price data updated successfully",
-      coinPrice,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to update coin price data", error: error.message });
-  }
-});
-
-// 6. API: Get current coin price data
-router.get("/get-coin-price", authorize, async (req, res) => {
-  try {
-    // Find the coin price data document
-    const coinPrice = await CoinPrice.findOne();
-
-    // If no document exists, return a 404 error
-    if (!coinPrice) {
-      return res.status(404).json({ message: "Coin price data not found" });
-    }
-
-    // Extract only the relevant data (labels and datasets)
-    const responseData = {
-      labels: coinPrice.labels,
-      datasets: coinPrice.datasets,
-    };
-
-    // Respond with the required coin price data
-    res.status(200).json(responseData);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to retrieve coin price data", error: error.message });
-  }
-});
-
-
 // Leaderboard API
 router.get('/leaderboard', authorize, async (req, res) => {
   try {
@@ -787,5 +699,170 @@ router.put("/transactions/:userId/:transactionId", async (req, res) => {
     });
   }
 });
+
+router.post("/generate-coin-price-data", async (req, res) => {
+  const BATCH_SIZE = 100;
+
+  try {
+    const today = new Date();
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(today.getMonth() - 6); // Set start to six months ago
+
+    const data = [];
+    let lastPrice = 1; // Start from an initial price of 1
+
+    // Generate fluctuating data for the last 6 months
+    for (let date = new Date(sixMonthsAgo); date <= today; date.setDate(date.getDate() + 1)) {
+      // Simulate price fluctuation by random amount between -5 and +5
+      const randomChange = Math.random() * 10 - 5; // Random fluctuation between -5 and +5
+      let price = lastPrice + randomChange;
+      
+      // Ensure the price is within the range [1, 20]
+      price = Math.min(20, Math.max(1, price)); // Clamp price between 1 and 20
+
+      // Round price to 2 decimal places
+      price = parseFloat(price.toFixed(2));
+
+      data.push({
+        date: new Date(date).toISOString().split("T")[0], // Format as YYYY-MM-DD
+        price,
+      });
+
+      lastPrice = price; // Update the last price for the next iteration
+    }
+
+    // Set today's price to 20 (Override the last price)
+    data[data.length - 1].price = 20; // The last price should be 20 today
+
+    // Insert data in batches
+    for (let i = 0; i < data.length; i += BATCH_SIZE) {
+      const batch = data.slice(i, i + BATCH_SIZE); // Slice the data into smaller chunks
+      await CoinPrice.insertMany(batch);
+    }
+
+    res.status(200).json({ message: "Fluctuating data for the last 6 months generated and inserted successfully!" });
+  } catch (error) {
+    console.error("Error generating fluctuating data:", error);
+    res.status(500).json({ message: "Error generating fluctuating data", error: error.message });
+  }
+});
+
+
+// Route to update today's price
+router.post("/update-price", async (req, res) => {
+  const { price } = req.body;
+
+  if (!price || typeof price !== "number") {
+    return res.status(400).json({ error: "Invalid price value" });
+  }
+
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    // Fetch today's price entry
+    const existingTodayPrice = await CoinPrice.findOne({ date: today });
+
+    if (existingTodayPrice) {
+      // Overwrite today's price
+      existingTodayPrice.price = price;
+      await existingTodayPrice.save();
+      return res.json({
+        message: "Today's price updated (overwritten)",
+        price: existingTodayPrice.price,
+      });
+    }
+
+    // If no price for today, create a new entry
+    const newPriceEntry = new CoinPrice({ date: today, price });
+    await newPriceEntry.save();
+
+    // Delete the oldest entry if more than 6 months of data exists
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const totalEntries = await CoinPrice.countDocuments();
+    if (totalEntries > 6) {
+      // Find and delete the oldest entry (entry before 6 months ago)
+      const oldestEntry = await CoinPrice.findOne({ date: { $lte: sixMonthsAgo.toISOString().split("T")[0] } }).sort({ date: 1 });
+      if (oldestEntry) {
+        await CoinPrice.deleteOne({ _id: oldestEntry._id });
+      }
+    }
+
+    res.json({ message: "Price added for today", price });
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+router.get("/get-prices", async (req, res) => {
+  try {
+    const { period } = req.query; // Get the period from query params
+
+    // Validate the period
+    if (!["1w", "1m", "3m", "6m", "today"].includes(period)) {
+      return res.status(400).json({ error: "Invalid period. Valid options are: 1w, 1m, 3m, 6m, today." });
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    
+    let startDate;
+
+    switch (period) {
+      case "1w":
+        // Last 1 week
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case "1m":
+        // Last 1 month
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+      case "3m":
+        // Last 3 months
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 3);
+        break;
+      case "6m":
+        // Last 6 months
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 6);
+        break;
+      case "today":
+        // Today's data
+        const todayPrice = await CoinPrice.findOne({ date: today });
+        return res.json({
+          todayPrice: todayPrice ? todayPrice.price : null,
+        });
+    }
+
+    // Get prices based on the start date for the specified period
+    const prices = await CoinPrice.find({
+      date: { $gte: startDate.toISOString().split("T")[0] },
+    }).sort({ date: 1 });
+
+    res.json({ prices });
+  } catch (error) {
+    console.error("Error fetching prices:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+router.delete("/delete-all-coin-price-data", async (req, res) => {
+  try {
+    // Delete all data from the CoinPrice collection
+    await CoinPrice.deleteMany({});
+
+    res.status(200).json({ message: "All coin price data deleted successfully!" });
+  } catch (error) {
+    console.error("Error deleting all coin price data:", error);
+    res.status(500).json({ message: "Error deleting all coin price data", error: error.message });
+  }
+});
+
+
 
 module.exports = router;

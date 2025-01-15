@@ -1,12 +1,8 @@
 const mongoose = require("mongoose");
 
-const CoinPriceSchema = new mongoose.Schema({
-  labels: { type: [String], required: true },
-  datasets: [
-    {
-      data: { type: [Number], required: true },
-    },
-  ],
+const coinPriceSchema = new mongoose.Schema({
+  date: { type: String, unique: true, required: true }, // YYYY-MM-DD format
+  price: { type: Number, required: true },
 });
 
-module.exports = mongoose.model("CoinPrice", CoinPriceSchema);
+module.exports = mongoose.model("CoinPrice", coinPriceSchema);
