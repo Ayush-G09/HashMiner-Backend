@@ -796,61 +796,117 @@ router.post("/update-price", async (req, res) => {
   }
 });
 
-
 router.get("/get-prices", async (req, res) => {
   try {
-    const { period } = req.query; // Get the period from query params
+    const { period } = req.query;
 
-    // Validate the period
     if (!["1w", "1m", "3m", "6m", "today"].includes(period)) {
       return res.status(400).json({ error: "Invalid period. Valid options are: 1w, 1m, 3m, 6m, today." });
     }
 
-    const today = new Date().toISOString().split("T")[0];
-    
-    let startDate;
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
 
+    // Calculate start date based on the selected period
+    let startDate = new Date();
     switch (period) {
       case "1w":
-        // Last 1 week
-        startDate = new Date();
         startDate.setDate(startDate.getDate() - 7);
         break;
       case "1m":
-        // Last 1 month
-        startDate = new Date();
         startDate.setMonth(startDate.getMonth() - 1);
         break;
       case "3m":
-        // Last 3 months
-        startDate = new Date();
         startDate.setMonth(startDate.getMonth() - 3);
         break;
       case "6m":
-        // Last 6 months
-        startDate = new Date();
         startDate.setMonth(startDate.getMonth() - 6);
         break;
       case "today":
-        // Today's data
-        const todayPrice = await CoinPrice.findOne({ date: today });
-        return res.json({
-          todayPrice: todayPrice ? todayPrice.price : null,
-        });
+        startDate = new Date(todayStr);
+        break;
     }
+    const startDateStr = startDate.toISOString().split("T")[0];
 
-    // Get prices based on the start date for the specified period
-    const prices = await CoinPrice.find({
-      date: { $gte: startDate.toISOString().split("T")[0] },
+    // 1️⃣ **DELETE old data beyond 6 months**
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    await CoinPrice.deleteMany({ date: { $lt: sixMonthsAgo.toISOString().split("T")[0] } });
+
+    // 2️⃣ **Fetch available data from the database**
+    let prices = await CoinPrice.find({
+      date: { $gte: startDateStr, $lte: todayStr },
     }).sort({ date: 1 });
 
-    res.json({ prices });
+    // 3️⃣ **Ensure today's price exists**
+    let todayPrice = prices.find((p) => p.date === todayStr);
+    if (!todayPrice) {
+      const lastPriceEntry = await CoinPrice.findOne({ date: { $lt: todayStr } }).sort({ date: -1 });
+      if (lastPriceEntry) {
+        todayPrice = new CoinPrice({
+          date: todayStr,
+          price: lastPriceEntry.price,
+          fluctuatedPrice: lastPriceEntry.price, // Initially set fluctuated price to last price
+          lastFluctuated: new Date(),
+        });
+        await todayPrice.save();
+        prices.push(todayPrice);
+      }
+    }
+
+    // 4️⃣ **Fluctuate today's price (if needed)**
+    if (todayPrice) {
+      const lastFluctuatedTime = todayPrice.lastFluctuated;
+      const now = new Date();
+
+      if (!lastFluctuatedTime || now - lastFluctuatedTime > 10 * 60 * 1000) {
+        // More than 10 mins have passed, generate new fluctuation
+        const basePrice = todayPrice.price;
+        const fluctuation = (Math.random() * 1 - 0.5) * 1; // Random ±0.5 fluctuation
+        const newFluctuatedPrice = parseFloat((basePrice + fluctuation).toFixed(2));
+
+        // Update fluctuated price and last fluctuated time
+        todayPrice.fluctuatedPrice = newFluctuatedPrice;
+        todayPrice.lastFluctuated = now;
+        await todayPrice.save();
+      }
+    }
+
+    // 5️⃣ **Fill missing dates with the latest available price**
+    const filledPrices = [];
+    let lastAvailablePrice = null;
+    let currentDate = new Date(startDateStr);
+
+    while (currentDate <= today) {
+      const dateStr = currentDate.toISOString().split("T")[0];
+      const priceEntry = prices.find((p) => p.date === dateStr);
+
+      if (priceEntry) {
+        lastAvailablePrice = priceEntry.price;
+        filledPrices.push(priceEntry);
+      } else if (lastAvailablePrice !== null) {
+        const filledEntry = new CoinPrice({ date: dateStr, price: lastAvailablePrice });
+        await filledEntry.save();
+        filledPrices.push(filledEntry);
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // 6️⃣ **Return prices with today's fluctuated price**
+    res.json({
+      prices: filledPrices.map((p) => ({
+        date: p.date,
+        price: p.date === todayStr ? p.fluctuatedPrice : p.price, // Send fluctuated price for today
+      })),
+    });
   } catch (error) {
     console.error("Error fetching prices:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
+module.exports = router;
 
 router.delete("/delete-all-coin-price-data", async (req, res) => {
   try {
