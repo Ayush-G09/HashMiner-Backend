@@ -70,6 +70,8 @@ router.post("/send-otp", async (req, res) => {
 });
 
 // 2. API: Register a new user
+const crypto = require("crypto");
+
 router.post("/register", async (req, res) => {
   const { username, email, password, referredBy } = req.body;
 
@@ -81,15 +83,34 @@ router.post("/register", async (req, res) => {
   const userExists = await User.findOne({ email });
   if (userExists) return res.status(400).json({ message: "User already exists" });
 
+  // If referredBy is provided, check if the referId exists in the database
+  if (referredBy) {
+    const referrer = await User.findOne({ referId: referredBy });
+    if (!referrer) {
+      return res.status(400).json({ message: "Invalid referral code" });
+    }
+  }
+
   // Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Generate a unique referId
+  let referId;
+  let isUnique = false;
+
+  while (!isUnique) {
+    referId = crypto.randomBytes(4).toString("hex"); // Generates an 8-character ID
+    const existingUser = await User.findOne({ referId });
+    if (!existingUser) isUnique = true;
+  }
 
   try {
     const newUser = await User.create({
       username,
       email,
       password: hashedPassword,
-      referredBy, // Optional, will be null if not provided
+      referredBy, // Will be null if not provided
+      referId,
     });
 
     res.status(201).json({ message: "User registered successfully", user: newUser });
@@ -97,6 +118,7 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ message: "Registration failed", error: error.message });
   }
 });
+
 
 // 3. API: Login user
 router.post("/login", async (req, res) => {

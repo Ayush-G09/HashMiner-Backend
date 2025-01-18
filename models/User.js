@@ -25,9 +25,10 @@ const UserSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   miners: { type: [MinerSchema], default: [] },
   referredBy: { type: String, default: null },
+  referId: { type: String, unique: true, required: true }, // Unique Refer ID
   image: { type: String, default: '' },
   totalCoinsMined: { type: Number, default: 0 },
-  transactions: {type: [TransactionSchema], default: []},
+  transactions: { type: [TransactionSchema], default: [] },
   upiID: { type: String, default: '' },
 });
 
