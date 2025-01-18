@@ -149,6 +149,8 @@ router.post("/login", async (req, res) => {
         username: user.username,
         email: user.email,
         image: user.image,
+        referredBy: user.referredBy,
+        referId: user.referId,
       },
     });
   } catch (error) {
