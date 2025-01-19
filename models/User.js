@@ -5,7 +5,7 @@ const TransactionSchema = new mongoose.Schema({
   type: { type: String, enum: ["Coin", "Miner"] },
   title: { type: String },
   date: { type: String, default: () => moment().format('DD/MM/YY') },
-  status: { type: String, enum: ["Completed", "Pending"] },
+  status: { type: String, enum: ["Completed", "Pending", "Failed"] },
   amount: { type: Number },
   to: { type: String },
 });
