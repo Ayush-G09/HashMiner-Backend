@@ -819,6 +819,11 @@ router.put("/transactions/:userId/:transactionId", async (req, res) => {
     // Update the transaction's status
     transaction.status = status;
 
+    // If the transaction status is "Failed", add the amount to the user's balance
+    if (status === "Failed") {
+      user.balance += transaction.amount; // Add the transaction amount to the user's balance
+    }
+
     // Save the updated user document
     await user.save();
 
