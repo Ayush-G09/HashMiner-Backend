@@ -4,12 +4,12 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const User = require("../models/User");
 const generateOTP = require("../utils/otpGenerator");
-const MINER_CONFIG = require("../config/minersConfig");
 const CoinPrice = require("../models/CoinPrice");
 const moment = require('moment');
 const authorize = require('../middleware/AuthMiddleware');
 const Miner = require('../models/Miners');
 const Balance = require("../models/Balance");
+const mongoose = require("mongoose");
 
 const router = express.Router();
 
@@ -170,31 +170,90 @@ router.delete("/delete-all-users", async (req, res) => {
 });
 
 // Add a Miner to the User
+// router.post("/add-miner/:userId", authorize, async (req, res) => {
+//   const { userId } = req.params;
+//   const { minerId } = req.body;
+
+//   if (!type || !MINER_CONFIG[type]) {
+//     return res.status(400).json({ message: "Invalid or missing miner type." });
+//   }
+
+//   try {
+//     const user = await User.findById(userId);
+//     if (!user) return res.status(404).json({ message: "User not found." });
+
+//     const { hashRate, capacity } = MINER_CONFIG[type];
+//     user.miners.push({
+//       type,
+//       hashRate,
+//       coinsMined: 0,
+//       capacity,
+//       status: "Running",
+//       lastCollected: new Date(),
+//     });
+
+//     await user.save();
+//     res.status(200).json({ message: "Miner added successfully", miners: user.miners });
+//   } catch (error) {
+//     res.status(500).json({ message: "Failed to add miner", error: error.message });
+//   }
+// });
+
 router.post("/add-miner/:userId", authorize, async (req, res) => {
   const { userId } = req.params;
-  const { type } = req.body;
+  const { minerId } = req.body;
 
-  if (!type || !MINER_CONFIG[type]) {
-    return res.status(400).json({ message: "Invalid or missing miner type." });
+  if (!minerId) {
+    return res.status(400).json({ message: "Miner ID is required." });
   }
 
-  try {
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found." });
+  // Start Mongoose transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    const { hashRate, capacity } = MINER_CONFIG[type];
+  try {
+    // Find the user
+    const user = await User.findById(userId).session(session);
+    if (!user) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Find the miner
+    const miner = await Miner.findById(minerId).session(session);
+    if (!miner) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Miner not found." });
+    }
+
+    // Add miner to user with status and lastCollected date
     user.miners.push({
-      type,
-      hashRate,
-      coinsMined: 0,
-      capacity,
+      minerId: miner._id,
       status: "Running",
       lastCollected: new Date(),
+      coinsMined: 0,
     });
 
-    await user.save();
+    // Update balance
+    let balanceData = await Balance.findOne().session(session);
+    if (!balanceData) {
+      balanceData = new Balance({ balance: miner.price });
+    } else {
+      balanceData.balance += miner.price;
+    }
+
+    // Save changes
+    await user.save({ session });
+    await balanceData.save({ session });
+
+    // Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
     res.status(200).json({ message: "Miner added successfully", miners: user.miners });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     res.status(500).json({ message: "Failed to add miner", error: error.message });
   }
 });
@@ -225,41 +284,92 @@ router.post("/collect-coins/:userId/:minerId", authorize, async (req, res) => {
   }
 });
 
+// router.get("/user/:id?", authorize, async (req, res) => {
+//   const { id } = req.params;
+
+//   try {
+//     if (id) {
+//       const user = await User.findById(id);
+
+//       if (!user) {
+//         return res.status(404).json({ message: "User not found" });
+//       }
+
+//       user.miners.forEach((miner) => {
+//         // Skip calculations if the miner is not in "running" status
+//         if (miner.status !== "Running") {
+//           return;
+//         }
+
+//         const now = new Date();
+//         const elapsedMinutes = Math.floor((now - miner.lastCollected) / 60000);
+
+//         if (elapsedMinutes >= 1 && miner.coinsMined < miner.capacity) {
+//           const intervals = Math.floor(elapsedMinutes / 1); // Calculate full 1-minute intervals
+//           const potentialCoins = miner.hashRate * intervals; // Potential coins to be mined
+
+//           if (miner.coinsMined + potentialCoins >= miner.capacity) {
+//             miner.coinsMined = miner.capacity; // Set coinsMined to capacity
+//             miner.status = "Stopped"; // Update status to stopped
+//           } else {
+//             miner.coinsMined += potentialCoins; // Add hash rate for each interval
+//             miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 1 * 60000); // Update lastCollected
+//           }
+//         }
+
+//         // If coinsMined is already at capacity, set status to stopped
+//         if (miner.coinsMined >= miner.capacity) {
+//           miner.status = "Stopped";
+//         }
+//       });
+
+//       await user.save();
+//       res.status(200).json({ message: "User data fetched successfully", user });
+//     } else {
+//       const users = await User.find();
+//       res.status(200).json({ message: "All users fetched successfully", users });
+//     }
+//   } catch (error) {
+//     res.status(500).json({ message: "Failed to fetch user data", error: error.message });
+//   }
+// });
+
 router.get("/user/:id?", authorize, async (req, res) => {
   const { id } = req.params;
 
   try {
     if (id) {
-      const user = await User.findById(id);
+      const user = await User.findById(id).populate("miners.minerId"); // Populate miner details
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
       user.miners.forEach((miner) => {
-        // Skip calculations if the miner is not in "running" status
-        if (miner.status !== "Running") {
-          return;
-        }
+        if (miner.status !== "Running") return;
 
         const now = new Date();
         const elapsedMinutes = Math.floor((now - miner.lastCollected) / 60000);
 
-        if (elapsedMinutes >= 1 && miner.coinsMined < miner.capacity) {
-          const intervals = Math.floor(elapsedMinutes / 1); // Calculate full 1-minute intervals
-          const potentialCoins = miner.hashRate * intervals; // Potential coins to be mined
+        // Ensure minerId is populated
+        if (!miner.minerId) return;
 
-          if (miner.coinsMined + potentialCoins >= miner.capacity) {
-            miner.coinsMined = miner.capacity; // Set coinsMined to capacity
-            miner.status = "Stopped"; // Update status to stopped
+        const { hashRate, capacity } = miner.minerId; // Get hashRate and capacity
+
+        if (elapsedMinutes >= 1 && miner.coinsMined < capacity) {
+          const intervals = Math.floor(elapsedMinutes / 1);
+          const potentialCoins = hashRate * intervals;
+
+          if (miner.coinsMined + potentialCoins >= capacity) {
+            miner.coinsMined = capacity;
+            miner.status = "Stopped";
           } else {
-            miner.coinsMined += potentialCoins; // Add hash rate for each interval
-            miner.lastCollected = new Date(miner.lastCollected.getTime() + intervals * 1 * 60000); // Update lastCollected
+            miner.coinsMined += potentialCoins;
+            miner.lastCollected = now;
           }
         }
 
-        // If coinsMined is already at capacity, set status to stopped
-        if (miner.coinsMined >= miner.capacity) {
+        if (miner.coinsMined >= capacity) {
           miner.status = "Stopped";
         }
       });
@@ -267,7 +377,7 @@ router.get("/user/:id?", authorize, async (req, res) => {
       await user.save();
       res.status(200).json({ message: "User data fetched successfully", user });
     } else {
-      const users = await User.find();
+      const users = await User.find().populate("miners.minerId"); // Populate all users' miners
       res.status(200).json({ message: "All users fetched successfully", users });
     }
   } catch (error) {
